@@ -221,7 +221,36 @@ def test_milestone_5_requires_saved_adapter_weights(monkeypatch, tmp_path):
 
 
 # Milestone 6: Provide a qualitative comparison interface for generated texts from both models.
-@pytest.mark.skip(reason="remove this line when you start milestone 6")
-def test_milestone_6():
-    raise NotImplementedError("write the test for milestone 6")
+def test_milestone_6(monkeypatch):
+    import app.core as core
+
+    calls = []
+
+    class TinyNGram:
+        def generate(self, seed_prompt, max_new_tokens):
+            calls.append(("ngram", seed_prompt, max_new_tokens))
+            return f"{seed_prompt} from ngram"
+
+    def generate_lora(seed_prompt, max_new_tokens, temperature, top_p):
+        calls.append(("lora", seed_prompt, max_new_tokens, temperature, top_p))
+        return f"{seed_prompt} from lora"
+
+    monkeypatch.setattr(core, "milestone_2", lambda: TinyNGram())
+    monkeypatch.setattr(core, "milestone_5", generate_lora)
+
+    outputs = core.milestone_6(
+        "The opening delivery",
+        max_new_tokens=12,
+        temperature=0.7,
+        top_p=0.85,
+    )
+
+    assert outputs == {
+        "ngram": "The opening delivery from ngram",
+        "lora": "The opening delivery from lora",
+    }
+    assert calls == [
+        ("ngram", "The opening delivery", 12),
+        ("lora", "The opening delivery", 12, 0.7, 0.85),
+    ]
 

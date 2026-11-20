@@ -26,3 +26,33 @@ def test_the_command_line_runs(capsys):
     main(["hello"])
     assert "is ready" in capsys.readouterr().out
 
+
+def test_compare_command_displays_both_outputs(monkeypatch, capsys):
+    from app import core
+    from app.cli import main
+
+    def compare(seed_prompt, max_new_tokens, temperature, top_p):
+        assert seed_prompt == "The opening delivery"
+        assert (max_new_tokens, temperature, top_p) == (12, 0.7, 0.85)
+        return {
+            "ngram": "The opening delivery from the N-gram model.",
+            "lora": "The opening delivery from the LoRA model.",
+        }
+
+    monkeypatch.setattr(core, "milestone_6", compare)
+    main([
+        "compare",
+        "The opening delivery",
+        "--max-new-tokens",
+        "12",
+        "--temperature",
+        "0.7",
+        "--top-p",
+        "0.85",
+    ])
+    output = capsys.readouterr().out
+    assert "Seed prompt: The opening delivery" in output
+    assert "N-gram" in output and "LoRA-adapted LLM" in output
+    assert "from the N-gram model." in output
+    assert "from the LoRA model." in output
+

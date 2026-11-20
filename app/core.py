@@ -286,5 +286,20 @@ def milestone_5(
 
 # --- Milestone 6: Provide a qualitative comparison interface for generated texts from both models.
 # Hint: Design a simple interface to display and compare the generated texts.
-def milestone_6():  # TODO(milestone 6)
-    raise NotImplementedError("TODO(milestone 6)")
+def milestone_6(
+    seed_prompt: str,
+    max_new_tokens: int = 40,
+    temperature: float = 0.8,
+    top_p: float = 0.9,
+) -> dict[str, str]:
+    if not seed_prompt.strip():
+        raise ValueError("seed_prompt must contain at least one character")
+
+    ngram_output = milestone_2().generate(seed_prompt, max_new_tokens=max_new_tokens)
+    lora_output = milestone_5(
+        seed_prompt,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_p=top_p,
+    )
+    return {"ngram": ngram_output, "lora": lora_output}
