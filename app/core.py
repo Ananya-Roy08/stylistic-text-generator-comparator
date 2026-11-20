@@ -1,9 +1,17 @@
 """Your code. One stub per milestone; build them in order and keep each one small."""
 
+from pathlib import Path
+
+
 # --- Milestone 1: Prepare a small corpus of sports commentary text.
 # Hint: You'll need to gather and clean a dataset suitable for training.
-def milestone_1():  # TODO(milestone 1)
-    raise NotImplementedError("TODO(milestone 1)")
+def milestone_1() -> list[str]:
+    corpus_path = Path(__file__).resolve().parents[1] / "data" / "sports_commentary.txt"
+    return [
+        line.strip()
+        for line in corpus_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 
 # --- Milestone 2: Implement the n-gram model and generate text from it.

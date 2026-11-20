@@ -5,9 +5,13 @@ They start skipped. Remove the `skip` line as you work on each milestone.
 import pytest
 
 # Milestone 1: Prepare a small corpus of sports commentary text.
-@pytest.mark.skip(reason="remove this line when you start milestone 1")
 def test_milestone_1():
-    raise NotImplementedError("write the test for milestone 1")
+    from app.core import milestone_1
+
+    commentary = milestone_1()
+    assert len(commentary) >= 12
+    assert all(line == line.strip() and line for line in commentary)
+    assert any("wicket" in line.lower() for line in commentary)
 
 
 # Milestone 2: Implement the n-gram model and generate text from it.
