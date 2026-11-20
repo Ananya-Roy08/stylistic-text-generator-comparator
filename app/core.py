@@ -1,5 +1,6 @@
 """Your code. One stub per milestone; build them in order and keep each one small."""
 
+from collections import Counter, defaultdict
 from pathlib import Path
 
 
@@ -14,10 +15,58 @@ def milestone_1() -> list[str]:
     ]
 
 
+class NGramModel:
+    def __init__(self, corpus: list[str], n: int = 3) -> None:
+        if n < 2:
+            raise ValueError("n must be at least 2")
+
+        self.n = n
+        self._continuations: dict[tuple[str, ...], Counter[str]] = defaultdict(Counter)
+        for line in corpus:
+            tokens = line.split()
+            for index, token in enumerate(tokens):
+                for context_size in range(min(n - 1, index) + 1):
+                    context = tuple(tokens[index - context_size : index])
+                    self._continuations[context][token] += 1
+
+        if not self._continuations:
+            raise ValueError("corpus must contain at least one token")
+
+    def generate(self, seed_prompt: str, max_new_tokens: int = 20) -> str:
+        seed = seed_prompt.strip()
+        if not seed:
+            raise ValueError("seed_prompt must contain at least one token")
+        if max_new_tokens < 0:
+            raise ValueError("max_new_tokens cannot be negative")
+
+        tokens = seed.split()
+        generated: list[str] = []
+        for _ in range(max_new_tokens):
+            if tokens[-1].endswith((".", "!", "?")):
+                break
+
+            next_token = self._next_token(tokens)
+            if next_token is None:
+                break
+
+            tokens.append(next_token)
+            generated.append(next_token)
+
+        return seed if not generated else f"{seed} {' '.join(generated)}"
+
+    def _next_token(self, tokens: list[str]) -> str | None:
+        for context_size in range(min(self.n - 1, len(tokens)), -1, -1):
+            context = tuple(tokens[-context_size:]) if context_size else ()
+            continuations = self._continuations.get(context)
+            if continuations:
+                return continuations.most_common(1)[0][0]
+        return None
+
+
 # --- Milestone 2: Implement the n-gram model and generate text from it.
 # Hint: Apply the N-gram model technique from the 'Build a Next-Word Predictor from Scratch' drill.
-def milestone_2():  # TODO(milestone 2)
-    raise NotImplementedError("TODO(milestone 2)")
+def milestone_2() -> NGramModel:
+    return NGramModel(milestone_1())
 
 
 # --- Milestone 3: Load a small pre-trained LLM and implement LoRA adapter injection.

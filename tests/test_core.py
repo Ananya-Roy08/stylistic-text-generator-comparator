@@ -15,9 +15,18 @@ def test_milestone_1():
 
 
 # Milestone 2: Implement the n-gram model and generate text from it.
-@pytest.mark.skip(reason="remove this line when you start milestone 2")
 def test_milestone_2():
-    raise NotImplementedError("write the test for milestone 2")
+    from app.core import milestone_2
+
+    model = milestone_2()
+    generated = model.generate("The opening delivery", max_new_tokens=20)
+    assert generated.startswith("The opening delivery ")
+    assert generated.endswith(".")
+    assert len(generated.split()) <= len("The opening delivery".split()) + 20
+    assert model.generate("The opening delivery", max_new_tokens=0) == "The opening delivery"
+
+    with pytest.raises(ValueError, match="seed_prompt"):
+        model.generate("   ")
 
 
 # Milestone 3: Load a small pre-trained LLM and implement LoRA adapter injection.

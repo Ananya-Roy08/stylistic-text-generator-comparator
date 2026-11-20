@@ -17,8 +17,9 @@ Tick these off as you go, and commit after each one.
 - [x] **1. Prepare a small corpus of sports commentary text.**
       The cleaned, one-commentary-line-per-entry cricket corpus is in `data/sports_commentary.txt`.
       `app.core.milestone_1()` loads it as a list of non-empty lines.
-- [ ] **2. Implement the n-gram model and generate text from it.**  
-      Hint: Apply the N-gram model technique from the 'Build a Next-Word Predictor from Scratch' drill.
+- [x] **2. Implement the n-gram model and generate text from it.**
+      `app.core.milestone_2()` returns a trigram model trained on the corpus;
+      call `.generate(seed_prompt)` to continue a prompt.
 - [ ] **3. Load a small pre-trained LLM and implement LoRA adapter injection.**  
       Hint: Use the 'Build LoRA from Scratch' drill's technique to prepare the LLM.
 - [ ] **4. Fine-tune the LoRA adapter on the sports commentary corpus.**  
