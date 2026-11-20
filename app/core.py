@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -216,8 +217,71 @@ def milestone_4() -> dict[str, torch.Tensor]:
 
 # --- Milestone 5: Generate text from the LoRA-adapted LLM.
 # Hint: Generate text using your fine-tuned LoRA-adapted LLM.
-def milestone_5():  # TODO(milestone 5)
-    raise NotImplementedError("TODO(milestone 5)")
+def milestone_5(
+    seed_prompt: str,
+    max_new_tokens: int = 80,
+    temperature: float = 0.8,
+    top_p: float = 0.9,
+) -> str:
+    if not seed_prompt.strip():
+        raise ValueError("seed_prompt must contain at least one character")
+    if not isinstance(max_new_tokens, int) or max_new_tokens < 1:
+        raise ValueError("max_new_tokens must be at least 1")
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("temperature must be greater than 0")
+    if not 0 < top_p <= 1:
+        raise ValueError("top_p must be in the range (0, 1]")
+    if not ADAPTER_WEIGHTS_PATH.is_file():
+        raise FileNotFoundError(
+            f"Fine-tuned adapter weights not found at {ADAPTER_WEIGHTS_PATH}; run milestone_4() first"
+        )
+
+    adapter_weights = torch.load(
+        ADAPTER_WEIGHTS_PATH,
+        map_location="cpu",
+        weights_only=True,
+    )
+    if not isinstance(adapter_weights, dict) or not all(
+        isinstance(name, str) and isinstance(weight, torch.Tensor)
+        for name, weight in adapter_weights.items()
+    ):
+        raise ValueError("saved adapter weights must be a mapping of names to tensors")
+
+    model, tokenizer = milestone_3()
+    model_adapter_names = {
+        name for name in model.state_dict() if "lora_" in name
+    }
+    if set(adapter_weights) != model_adapter_names:
+        raise ValueError("saved adapter weights do not match the loaded model")
+    model.load_state_dict(adapter_weights, strict=False)
+
+    if tokenizer.eos_token_id is None:
+        raise ValueError("tokenizer must define an EOS token for sampling")
+    if tokenizer.pad_token_id is None:
+        if tokenizer.eos_token is None:
+            raise ValueError("tokenizer needs an EOS token to pad generation inputs")
+        tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token_id is None:
+        raise ValueError("tokenizer could not resolve a pad token")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+    encoded = tokenizer(seed_prompt.strip(), return_tensors="pt")
+    model_inputs = {
+        name: value.to(device)
+        for name, value in encoded.items()
+        if isinstance(value, torch.Tensor)
+    }
+    generated = model.generate(
+        **model_inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=True,
+        temperature=temperature,
+        top_p=top_p,
+        pad_token_id=tokenizer.pad_token_id,
+    )
+    return tokenizer.decode(generated[0].detach().cpu(), skip_special_tokens=True)
 
 
 # --- Milestone 6: Provide a qualitative comparison interface for generated texts from both models.

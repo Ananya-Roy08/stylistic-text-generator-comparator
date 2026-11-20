@@ -27,8 +27,9 @@ Tick these off as you go, and commit after each one.
 - [x] **4. Fine-tune the LoRA adapter on the sports commentary corpus.**
       `app.core.milestone_4()` runs one small-batch epoch on CPU or CUDA, saves only
       adapter weights to the ignored `data/lora_adapter.pt`, and returns those weights.
-- [ ] **5. Generate text from the LoRA-adapted LLM.**  
-      Hint: Generate text using your fine-tuned LoRA-adapted LLM.
+- [x] **5. Generate text from the LoRA-adapted LLM.**
+      `app.core.milestone_5(seed_prompt)` loads the saved adapter and generates with
+      temperature/top-p sampling. It raises a clear error if Milestone 4 weights are missing.
 - [ ] **6. Provide a qualitative comparison interface for generated texts from both models.**  
       Hint: Design a simple interface to display and compare the generated texts.
 
