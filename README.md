@@ -20,8 +20,10 @@ Tick these off as you go, and commit after each one.
 - [x] **2. Implement the n-gram model and generate text from it.**
       `app.core.milestone_2()` returns a trigram model trained on the corpus;
       call `.generate(seed_prompt)` to continue a prompt.
-- [ ] **3. Load a small pre-trained LLM and implement LoRA adapter injection.**  
-      Hint: Use the 'Build LoRA from Scratch' drill's technique to prepare the LLM.
+- [x] **3. Load a small pre-trained LLM and implement LoRA adapter injection.**
+      `app.core.milestone_3()` loads `distilgpt2` and injects trainable LoRA weights
+      into its attention and feed-forward projections. Transformers caches downloaded model files;
+      the CI test mocks loading so it needs neither network access nor model weights.
 - [ ] **4. Fine-tune the LoRA adapter on the sports commentary corpus.**  
       Hint: Train the LoRA adapter on your collected sports commentary corpus.
 - [ ] **5. Generate text from the LoRA-adapted LLM.**  

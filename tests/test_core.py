@@ -30,9 +30,53 @@ def test_milestone_2():
 
 
 # Milestone 3: Load a small pre-trained LLM and implement LoRA adapter injection.
-@pytest.mark.skip(reason="remove this line when you start milestone 3")
-def test_milestone_3():
-    raise NotImplementedError("write the test for milestone 3")
+def test_milestone_3(monkeypatch):
+    import torch
+    from transformers import AutoModelForCausalLM, AutoTokenizer, GPT2Config
+
+    from app.core import LoRALinear, milestone_3
+
+    model = AutoModelForCausalLM.from_config(
+        GPT2Config(
+            n_layer=1,
+            n_head=2,
+            n_embd=8,
+            vocab_size=32,
+            n_positions=16,
+            n_ctx=16,
+            bos_token_id=1,
+            eos_token_id=2,
+        )
+    )
+    model.eval()
+    input_ids = torch.tensor([[1, 2, 3]])
+    expected_logits = model(input_ids=input_ids).logits.detach()
+    tokenizer = object()
+    calls = []
+
+    def load_model(cls, model_name):
+        calls.append(("model", model_name))
+        return model
+
+    def load_tokenizer(cls, model_name):
+        calls.append(("tokenizer", model_name))
+        return tokenizer
+
+    monkeypatch.setattr(AutoModelForCausalLM, "from_pretrained", classmethod(load_model))
+    monkeypatch.setattr(AutoTokenizer, "from_pretrained", classmethod(load_tokenizer))
+
+    loaded_model, loaded_tokenizer = milestone_3()
+    assert calls == [("tokenizer", "distilgpt2"), ("model", "distilgpt2")]
+    assert loaded_tokenizer is tokenizer
+    assert isinstance(loaded_model.transformer.h[0].attn.c_attn, LoRALinear)
+    assert isinstance(loaded_model.transformer.h[0].attn.c_proj, LoRALinear)
+    assert all(
+        not parameter.requires_grad
+        for name, parameter in loaded_model.named_parameters()
+        if "lora_" not in name
+    )
+    assert any(parameter.requires_grad for parameter in loaded_model.parameters())
+    assert torch.allclose(loaded_model(input_ids=input_ids).logits, expected_logits)
 
 
 # Milestone 4: Fine-tune the LoRA adapter on the sports commentary corpus.

@@ -3,6 +3,9 @@
 from collections import Counter, defaultdict
 from pathlib import Path
 
+import torch
+from torch import nn
+
 
 # --- Milestone 1: Prepare a small corpus of sports commentary text.
 # Hint: You'll need to gather and clean a dataset suitable for training.
@@ -69,10 +72,66 @@ def milestone_2() -> NGramModel:
     return NGramModel(milestone_1())
 
 
+class LoRALinear(nn.Module):
+    def __init__(self, base_layer: nn.Module, rank: int = 4, alpha: float = 8.0) -> None:
+        super().__init__()
+        if rank < 1:
+            raise ValueError("rank must be at least 1")
+        if alpha <= 0:
+            raise ValueError("alpha must be greater than 0")
+
+        weight = getattr(base_layer, "weight", None)
+        if not isinstance(weight, torch.Tensor) or weight.ndim != 2:
+            raise TypeError("LoRA targets must have a two-dimensional weight")
+        if isinstance(base_layer, nn.Linear):
+            in_features, out_features = base_layer.in_features, base_layer.out_features
+        elif base_layer.__class__.__name__ == "Conv1D":
+            in_features, out_features = weight.shape
+        else:
+            raise TypeError("LoRA targets must be nn.Linear or Transformers Conv1D layers")
+
+        self.base_layer = base_layer
+        self.lora_A = nn.Linear(in_features, rank, bias=False)
+        self.lora_B = nn.Linear(rank, out_features, bias=False)
+        self.lora_A.to(device=weight.device, dtype=weight.dtype)
+        self.lora_B.to(device=weight.device, dtype=weight.dtype)
+        nn.init.zeros_(self.lora_B.weight)
+        self.scaling = alpha / rank
+
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return self.base_layer(inputs) + self.lora_B(self.lora_A(inputs)) * self.scaling
+
+
+def inject_lora_adapters(
+    model: nn.Module,
+    target_modules: tuple[str, ...] = ("c_attn", "c_proj"),
+    rank: int = 4,
+    alpha: float = 8.0,
+) -> nn.Module:
+    for parameter in model.parameters():
+        parameter.requires_grad_(False)
+
+    injected = 0
+    for parent in model.modules():
+        for child_name, child in list(parent.named_children()):
+            if child_name in target_modules:
+                setattr(parent, child_name, LoRALinear(child, rank=rank, alpha=alpha))
+                injected += 1
+
+    if injected == 0:
+        raise ValueError(f"No LoRA target layers found for {target_modules}")
+    return model
+
+
 # --- Milestone 3: Load a small pre-trained LLM and implement LoRA adapter injection.
 # Hint: Use the 'Build LoRA from Scratch' drill's technique to prepare the LLM.
-def milestone_3():  # TODO(milestone 3)
-    raise NotImplementedError("TODO(milestone 3)")
+def milestone_3() -> tuple[nn.Module, object]:
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    model_name = "distilgpt2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    return inject_lora_adapters(model), tokenizer
 
 
 # --- Milestone 4: Fine-tune the LoRA adapter on the sports commentary corpus.
