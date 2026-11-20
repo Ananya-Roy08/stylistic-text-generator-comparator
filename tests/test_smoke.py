@@ -1,5 +1,4 @@
-"""These pass on day one. They check the plumbing so you notice quickly if you break it."""
-import os
+"""Smoke tests for storage, configuration, and CLI entry points."""
 
 from app import llm
 from app.storage import Store

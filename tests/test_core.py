@@ -1,7 +1,4 @@
-"""Your tests. Each milestone in README.md gets one here: write the test first, then make it pass.
-
-They start skipped. Remove the `skip` line as you work on each milestone.
-"""
+"""Behavior tests for the comparator's models and workflows."""
 import pytest
 
 # Milestone 1: Prepare a small corpus of sports commentary text.

@@ -1,4 +1,4 @@
-"""Your code. One stub per milestone; build them in order and keep each one small."""
+"""Core models and workflows for the stylistic text generator comparator."""
 
 from __future__ import annotations
 
@@ -17,8 +17,6 @@ if TYPE_CHECKING:
 ADAPTER_WEIGHTS_PATH = Path(__file__).resolve().parents[1] / "data" / "lora_adapter.pt"
 
 
-# --- Milestone 1: Prepare a small corpus of sports commentary text.
-# Hint: You'll need to gather and clean a dataset suitable for training.
 def milestone_1() -> list[str]:
     corpus_path = Path(__file__).resolve().parents[1] / "data" / "sports_commentary.txt"
     return [
@@ -76,8 +74,6 @@ class NGramModel:
         return None
 
 
-# --- Milestone 2: Implement the n-gram model and generate text from it.
-# Hint: Apply the N-gram model technique from the 'Build a Next-Word Predictor from Scratch' drill.
 def milestone_2() -> NGramModel:
     return NGramModel(milestone_1())
 
@@ -133,8 +129,6 @@ def inject_lora_adapters(
     return model
 
 
-# --- Milestone 3: Load a small pre-trained LLM and implement LoRA adapter injection.
-# Hint: Use the 'Build LoRA from Scratch' drill's technique to prepare the LLM.
 def milestone_3() -> tuple[nn.Module, PreTrainedTokenizerBase]:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -144,8 +138,6 @@ def milestone_3() -> tuple[nn.Module, PreTrainedTokenizerBase]:
     return inject_lora_adapters(model), tokenizer
 
 
-# --- Milestone 4: Fine-tune the LoRA adapter on the sports commentary corpus.
-# Hint: Train the LoRA adapter on your collected sports commentary corpus.
 def milestone_4() -> dict[str, torch.Tensor]:
     model, tokenizer = milestone_3()
     corpus = milestone_1()
@@ -215,8 +207,6 @@ def milestone_4() -> dict[str, torch.Tensor]:
     return adapter_weights
 
 
-# --- Milestone 5: Generate text from the LoRA-adapted LLM.
-# Hint: Generate text using your fine-tuned LoRA-adapted LLM.
 def milestone_5(
     seed_prompt: str,
     max_new_tokens: int = 80,
@@ -284,8 +274,6 @@ def milestone_5(
     return tokenizer.decode(generated[0].detach().cpu(), skip_special_tokens=True)
 
 
-# --- Milestone 6: Provide a qualitative comparison interface for generated texts from both models.
-# Hint: Design a simple interface to display and compare the generated texts.
 def milestone_6(
     seed_prompt: str,
     max_new_tokens: int = 40,
