@@ -1,10 +1,19 @@
 """Your code. One stub per milestone; build them in order and keep each one small."""
 
+from __future__ import annotations
+
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import torch
 from torch import nn
+
+if TYPE_CHECKING:
+    from transformers import PreTrainedTokenizerBase
+
+
+ADAPTER_WEIGHTS_PATH = Path(__file__).resolve().parents[1] / "data" / "lora_adapter.pt"
 
 
 # --- Milestone 1: Prepare a small corpus of sports commentary text.
@@ -125,7 +134,7 @@ def inject_lora_adapters(
 
 # --- Milestone 3: Load a small pre-trained LLM and implement LoRA adapter injection.
 # Hint: Use the 'Build LoRA from Scratch' drill's technique to prepare the LLM.
-def milestone_3() -> tuple[nn.Module, object]:
+def milestone_3() -> tuple[nn.Module, PreTrainedTokenizerBase]:
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     model_name = "distilgpt2"
@@ -136,8 +145,73 @@ def milestone_3() -> tuple[nn.Module, object]:
 
 # --- Milestone 4: Fine-tune the LoRA adapter on the sports commentary corpus.
 # Hint: Train the LoRA adapter on your collected sports commentary corpus.
-def milestone_4():  # TODO(milestone 4)
-    raise NotImplementedError("TODO(milestone 4)")
+def milestone_4() -> dict[str, torch.Tensor]:
+    model, tokenizer = milestone_3()
+    corpus = milestone_1()
+    if not corpus:
+        raise ValueError("training corpus must contain at least one line")
+
+    if tokenizer.pad_token_id is None:
+        if tokenizer.eos_token is None:
+            raise ValueError("tokenizer needs an EOS token to pad training batches")
+        tokenizer.pad_token = tokenizer.eos_token
+
+    encoded = tokenizer(
+        corpus,
+        padding=True,
+        truncation=True,
+        max_length=128,
+        return_tensors="pt",
+    )
+    input_ids = encoded["input_ids"]
+    attention_mask = encoded.get("attention_mask", torch.ones_like(input_ids))
+    if input_ids.ndim != 2 or input_ids.shape[0] == 0:
+        raise ValueError("tokenizer must produce a non-empty batch of token sequences")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.train()
+    input_ids = input_ids.to(device)
+    attention_mask = attention_mask.to(device)
+
+    trainable_parameters = [
+        parameter
+        for name, parameter in model.named_parameters()
+        if "lora_" in name and parameter.requires_grad
+    ]
+    if not trainable_parameters:
+        raise ValueError("model has no trainable LoRA adapter weights")
+
+    optimizer = torch.optim.AdamW(trainable_parameters, lr=1e-3)
+    batch_size = 4
+    for start in range(0, input_ids.shape[0], batch_size):
+        batch_ids = input_ids[start : start + batch_size]
+        batch_mask = attention_mask[start : start + batch_size]
+        labels = batch_ids.clone()
+        labels[batch_mask == 0] = -100
+
+        optimizer.zero_grad(set_to_none=True)
+        output = model(input_ids=batch_ids, attention_mask=batch_mask, labels=labels)
+        loss = getattr(output, "loss", None)
+        if not isinstance(loss, torch.Tensor):
+            raise TypeError("causal language model must return a tensor loss")
+        if not torch.isfinite(loss).all():
+            raise ValueError("training produced a non-finite loss")
+        loss.backward()
+        optimizer.step()
+
+    model.eval()
+    adapter_weights = {
+        name: tensor.detach().cpu().clone()
+        for name, tensor in model.state_dict().items()
+        if "lora_" in name
+    }
+    if not adapter_weights:
+        raise RuntimeError("model has no LoRA adapter weights to save")
+
+    ADAPTER_WEIGHTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(adapter_weights, ADAPTER_WEIGHTS_PATH)
+    return adapter_weights
 
 
 # --- Milestone 5: Generate text from the LoRA-adapted LLM.

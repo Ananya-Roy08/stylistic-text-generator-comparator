@@ -80,9 +80,66 @@ def test_milestone_3(monkeypatch):
 
 
 # Milestone 4: Fine-tune the LoRA adapter on the sports commentary corpus.
-@pytest.mark.skip(reason="remove this line when you start milestone 4")
-def test_milestone_4():
-    raise NotImplementedError("write the test for milestone 4")
+def test_milestone_4(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    import torch
+    from torch import nn
+    from torch.nn import functional as F
+
+    import app.core as core
+
+    class TinyModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.embedding = nn.Embedding(8, 4)
+            self.projections = nn.Module()
+            self.projections.c_attn = nn.Linear(4, 4)
+            self.projections.c_proj = nn.Linear(4, 4)
+            self.output = nn.Linear(4, 8)
+            core.inject_lora_adapters(self, rank=2)
+
+        def forward(self, input_ids, attention_mask, labels):
+            hidden = self.embedding(input_ids)
+            hidden = self.projections.c_attn(hidden)
+            hidden = self.projections.c_proj(hidden)
+            logits = self.output(hidden)
+            loss = F.cross_entropy(
+                logits.reshape(-1, logits.shape[-1]),
+                labels.reshape(-1),
+                ignore_index=-100,
+            )
+            return SimpleNamespace(loss=loss)
+
+    class TinyTokenizer:
+        pad_token_id = 0
+        eos_token = "</s>"
+        pad_token = None
+
+        def __call__(self, texts, **kwargs):
+            input_ids = torch.tensor([[1, 3, 4, 2] for _ in texts])
+            return {
+                "input_ids": input_ids,
+                "attention_mask": torch.ones_like(input_ids),
+            }
+
+    model = TinyModel()
+    monkeypatch.setattr(core, "milestone_3", lambda: (model, TinyTokenizer()))
+    monkeypatch.setattr(core, "ADAPTER_WEIGHTS_PATH", tmp_path / "adapter.pt")
+
+    initial_b = model.projections.c_attn.lora_B.weight.detach().clone()
+    adapter_weights = core.milestone_4()
+    saved_weights = torch.load(tmp_path / "adapter.pt", weights_only=True)
+
+    assert adapter_weights
+    assert any("lora_" in name for name in adapter_weights)
+    assert any(
+        not torch.equal(initial_b, tensor)
+        for name, tensor in adapter_weights.items()
+        if "c_attn.lora_B.weight" in name
+    )
+    assert set(saved_weights) == set(adapter_weights)
+    assert all(torch.equal(saved_weights[name], value) for name, value in adapter_weights.items())
 
 
 # Milestone 5: Generate text from the LoRA-adapted LLM.

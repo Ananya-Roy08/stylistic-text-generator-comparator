@@ -24,8 +24,9 @@ Tick these off as you go, and commit after each one.
       `app.core.milestone_3()` loads `distilgpt2` and injects trainable LoRA weights
       into its attention and feed-forward projections. Transformers caches downloaded model files;
       the CI test mocks loading so it needs neither network access nor model weights.
-- [ ] **4. Fine-tune the LoRA adapter on the sports commentary corpus.**  
-      Hint: Train the LoRA adapter on your collected sports commentary corpus.
+- [x] **4. Fine-tune the LoRA adapter on the sports commentary corpus.**
+      `app.core.milestone_4()` runs one small-batch epoch on CPU or CUDA, saves only
+      adapter weights to the ignored `data/lora_adapter.pt`, and returns those weights.
 - [ ] **5. Generate text from the LoRA-adapted LLM.**  
       Hint: Generate text using your fine-tuned LoRA-adapted LLM.
 - [ ] **6. Provide a qualitative comparison interface for generated texts from both models.**  
